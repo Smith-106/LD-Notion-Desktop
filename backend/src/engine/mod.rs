@@ -8,6 +8,7 @@ pub mod markdown_io;
 pub mod trash;
 pub mod image;
 pub mod backup;
+pub mod version;
 
 use serde::{Deserialize, Serialize};
 

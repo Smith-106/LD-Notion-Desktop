@@ -54,7 +54,7 @@ pub fn initialize(database_path: &Path, storage_root: &Path) -> Result<Connectio
 
 /// 验证数据库 schema 完整性 — 检查 4 张核心表是否存在
 pub fn validate_schema(conn: &Connection) -> Result<()> {
-    let expected_tables = ["workspaces", "pages", "page_tree", "fts_index", "trash"];
+    let expected_tables = ["workspaces", "pages", "page_tree", "fts_index", "trash", "page_versions"];
     let mut stmt = conn.prepare(
         "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'",
     )?;

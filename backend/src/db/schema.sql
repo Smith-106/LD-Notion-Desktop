@@ -65,3 +65,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS fts_index USING fts5(
     tags,
     tokenize='unicode61'
 );
+
+-- 页面版本历史
+CREATE TABLE IF NOT EXISTS page_versions (
+    id TEXT PRIMARY KEY,
+    page_id TEXT NOT NULL REFERENCES pages(id),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

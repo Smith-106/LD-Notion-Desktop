@@ -321,6 +321,30 @@ export async function uploadImage(filename: string, data: ArrayBuffer): Promise<
 
 // ── 备份 ──
 
+export interface PageVersion {
+  id: string;
+  page_id: string;
+  title: string;
+  body: string;
+  tags: string[];
+  created_at: string;
+}
+
+export async function listPageVersions(pageId: string): Promise<PageVersion[]> {
+  const data = await request<{ data: PageVersion[] }>(`/api/pages/${pageId}/versions`);
+  return data.data;
+}
+
+export async function restorePageVersion(versionId: string): Promise<void> {
+  await request(`/api/pages/${versionId}/versions/restore`, { method: "POST" });
+}
+
+export async function exportPageHtml(pageId: string): Promise<Blob> {
+  const res = await fetch(`/api/pages/${pageId}/html`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.blob();
+}
+
 export async function exportWorkspace(workspaceId: string): Promise<Blob> {
   const res = await fetch(`/api/workspaces/${workspaceId}/export`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

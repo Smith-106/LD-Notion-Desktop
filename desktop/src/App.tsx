@@ -4,6 +4,7 @@ import Sidebar from "./components/Sidebar";
 import EditorPage from "./pages/EditorPage";
 import SettingsPage from "./pages/SettingsPage";
 import ThemeToggle from "./components/ThemeToggle";
+import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import { useTheme } from "./hooks/useTheme";
 import { useAppStore } from "./store/appStore";
 import { createPage, getPageTree } from "./services/api";
@@ -43,6 +44,7 @@ function App() {
           <span className="app-logo">LD-Notion Hub</span>
         </div>
         <div className="header-right">
+          <KeyboardShortcuts />
           <ThemeToggle />
         </div>
       </header>

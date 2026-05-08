@@ -576,3 +576,181 @@ pub async fn import_workspace(
         Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
     }
 }
+
+// ── 导出 HTML API ──
+
+pub async fn export_page_html(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Response {
+    let conn = state.db.lock().await;
+    match engine::page::read_content(&conn, &id, &state.config.storage_root) {
+        Ok(Some(content)) => {
+            let html_body = markdown_to_html(&content.body);
+            let title = html_escape(&content.title);
+            let full_html = format!(r#"<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title}</title>
+<style>
+body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.7; }}
+h1 {{ font-size: 1.8em; border-bottom: 1px solid #eee; padding-bottom: 8px; }}
+h2 {{ font-size: 1.4em; }}
+h3 {{ font-size: 1.2em; }}
+code {{ background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }}
+pre {{ background: #f5f5f5; padding: 16px; border-radius: 6px; overflow-x: auto; }}
+pre code {{ background: none; padding: 0; }}
+table {{ border-collapse: collapse; width: 100%; }}
+th, td {{ border: 1px solid #ddd; padding: 8px 12px; text-align: left; }}
+th {{ background: #f9f9f9; }}
+blockquote {{ border-left: 3px solid #ddd; margin: 0; padding: 8px 16px; color: #666; }}
+img {{ max-width: 100%; }}
+</style>
+</head>
+<body>
+<h1>{title}</h1>
+{html_body}
+</body>
+</html>"#);
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, "text/html; charset=utf-8".to_string())],
+                full_html,
+            ).into_response()
+        }
+        _ => (
+            StatusCode::NOT_FOUND,
+            [(header::CONTENT_TYPE, "text/plain".to_string())],
+            "page not found",
+        ).into_response(),
+    }
+}
+
+fn markdown_to_html(md: &str) -> String {
+    // 简单 Markdown → HTML 转换，覆盖常用语法
+    let mut html = String::new();
+    let mut in_code_block = false;
+    let mut in_list = false;
+
+    for line in md.lines() {
+        if line.starts_with("```") {
+            if in_code_block {
+                html.push_str("</code></pre>\n");
+                in_code_block = false;
+            } else {
+                if in_list { html.push_str("</ul>\n"); in_list = false; }
+                html.push_str("<pre><code>");
+                in_code_block = true;
+            }
+            continue;
+        }
+
+        if in_code_block {
+            html.push_str(&html_escape(line));
+            html.push('\n');
+            continue;
+        }
+
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            if in_list { html.push_str("</ul>\n"); in_list = false; }
+            continue;
+        }
+
+        if let Some(rest) = trimmed.strip_prefix("# ") {
+            if in_list { html.push_str("</ul>\n"); in_list = false; }
+            html.push_str(&format!("<h1>{}</h1>\n", inline_md(&html_escape(rest))));
+        } else if let Some(rest) = trimmed.strip_prefix("## ") {
+            if in_list { html.push_str("</ul>\n"); in_list = false; }
+            html.push_str(&format!("<h2>{}</h2>\n", inline_md(&html_escape(rest))));
+        } else if let Some(rest) = trimmed.strip_prefix("### ") {
+            if in_list { html.push_str("</ul>\n"); in_list = false; }
+            html.push_str(&format!("<h3>{}</h3>\n", inline_md(&html_escape(rest))));
+        } else if let Some(rest) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
+            if !in_list { html.push_str("<ul>\n"); in_list = true; }
+            html.push_str(&format!("<li>{}</li>\n", inline_md(&html_escape(rest))));
+        } else if let Some(rest) = trimmed.strip_prefix('>') {
+            if in_list { html.push_str("</ul>\n"); in_list = false; }
+            html.push_str(&format!("<blockquote>{}</blockquote>\n", inline_md(&html_escape(rest.trim()))));
+        } else {
+            if in_list { html.push_str("</ul>\n"); in_list = false; }
+            html.push_str(&format!("<p>{}</p>\n", inline_md(&html_escape(trimmed))));
+        }
+    }
+    if in_code_block { html.push_str("</code></pre>\n"); }
+    if in_list { html.push_str("</ul>\n"); }
+    html
+}
+
+fn inline_md(text: &str) -> String {
+    let mut result = text.to_string();
+    while let Some(start) = result.find("**") {
+        if let Some(end) = result[start + 2..].find("**") {
+            let inner = &result[start + 2..start + 2 + end];
+            result = format!("{}<strong>{}</strong>{}", &result[..start], inner, &result[start + 2 + end + 2..]);
+        } else {
+            break;
+        }
+    }
+    // Italic: *text*
+    while let Some(start) = result.find('*') {
+        if let Some(end) = result[start + 1..].find('*') {
+            let inner = &result[start + 1..start + 1 + end];
+            result = format!("{}<em>{}</em>{}", &result[..start], inner, &result[start + 1 + end + 1..]);
+        } else {
+            break;
+        }
+    }
+    // Code: `text`
+    while let Some(start) = result.find('`') {
+        if let Some(end) = result[start + 1..].find('`') {
+            let inner = &result[start + 1..start + 1 + end];
+            result = format!("{}<code>{}</code>{}", &result[..start], inner, &result[start + 1 + end + 1..]);
+        } else {
+            break;
+        }
+    }
+    result
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+     .replace('<', "&lt;")
+     .replace('>', "&gt;")
+     .replace('"', "&quot;")
+}
+
+// ── 版本历史 API ──
+
+pub async fn list_page_versions(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    match engine::version::list_versions(&conn, &id) {
+        Ok(versions) => Json(json!({"ok": true, "data": versions})),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+pub async fn restore_page_version(
+    State(state): State<Arc<AppState>>,
+    Path(version_id): Path<String>,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    match engine::version::restore_version(&conn, &version_id, &state.config.storage_root) {
+        Ok(restored) => {
+            if restored {
+                if let Ok(Some(version)) = engine::version::get_version(&conn, &version_id) {
+                    if let Ok(Some(content)) = engine::page::read_content(&conn, &version.page_id, &state.config.storage_root) {
+                        let _ = search::index_page(&conn, &version.page_id, &content.title, &content.body, &content.tags.join(", "));
+                    }
+                }
+            }
+            Json(json!({"ok": true, "restored": restored}))
+        }
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}

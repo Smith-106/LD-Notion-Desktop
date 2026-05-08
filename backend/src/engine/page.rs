@@ -192,6 +192,12 @@ pub fn update_content(
         updated: String::new(),
         body: String::new(),
     });
+
+    // 保存当前内容为版本快照（仅当内容有变化时）
+    if content.body != body {
+        let _ = super::version::save_version(conn, &page, &content.body, &content.tags);
+    }
+
     content.body = body.to_string();
     content.updated.clone_from(&now);
     // 先写文件，再更新 DB — 文件写入失败时两者都不变（内容安全优先于时间戳准确）

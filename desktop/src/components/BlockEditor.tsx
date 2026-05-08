@@ -13,8 +13,9 @@ import { common, createLowlight } from "lowlight";
 import { Markdown as tiptapMarkdown } from "tiptap-markdown";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useAppStore } from "../store/appStore";
-import { updatePageContent, uploadImage } from "../services/api";
+import { updatePageContent, uploadImage, exportPageHtml } from "../services/api";
 import TagBar from "./TagBar";
+import VersionPanel from "./VersionPanel";
 import "./BlockEditor.css";
 
 const lowlight = createLowlight(common);
@@ -221,6 +222,21 @@ export default function BlockEditor() {
     input.click();
   }, [editor]);
 
+  const handleExportHtml = useCallback(async () => {
+    if (!currentPage) return;
+    try {
+      const blob = await exportPageHtml(currentPage.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${currentPage.title || "page"}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`导出失败: ${err}`);
+    }
+  }, [currentPage]);
+
   return (
     <div className="block-editor" onKeyDown={handleKeyDown}>
       <div className="block-editor-toolbar">
@@ -253,6 +269,12 @@ export default function BlockEditor() {
             <path d="M2 11l6 3 6-3M8 2v10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        <button className="toolbar-btn" onClick={handleExportHtml} title="导出 HTML">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M5 3L1 8l4 5M11 3l4 5-4 5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <VersionPanel />
       </div>
       <TagBar />
       <EditorContent editor={editor} />

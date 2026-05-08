@@ -1,7 +1,7 @@
 // LD-Notion Hub 后端服务入口
 
 use axum::{routing::{delete, get, post, put}, Router};
-use ld_notion_backend::{config, db, AppState, health_check, list_workspaces, create_workspace, delete_workspace, rename_workspace, workspace_stats, create_page, get_page, delete_page, get_page_content, update_page_content, get_page_tree, search_pages, rename_page, move_page, import_page, duplicate_page, update_tags, list_tags as list_workspace_tags, list_recent, list_pinned, toggle_pin, list_trash, restore_page, purge_page, empty_trash, reorder_pages, upload_image, get_image, export_workspace, import_workspace, mcp};
+use ld_notion_backend::{config, db, AppState, health_check, list_workspaces, create_workspace, delete_workspace, rename_workspace, workspace_stats, create_page, get_page, delete_page, get_page_content, update_page_content, get_page_tree, search_pages, rename_page, move_page, import_page, duplicate_page, update_tags, list_tags as list_workspace_tags, list_recent, list_pinned, toggle_pin, list_trash, restore_page, purge_page, empty_trash, reorder_pages, upload_image, get_image, export_workspace, import_workspace, list_page_versions, restore_page_version, export_page_html, mcp};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -43,6 +43,9 @@ async fn main() {
         .route("/api/pages/{id}/rename", put(rename_page))
         .route("/api/pages/{id}/move", put(move_page))
         .route("/api/pages/{id}/duplicate", post(duplicate_page))
+        .route("/api/pages/{id}/html", get(export_page_html))
+        .route("/api/pages/{id}/versions", get(list_page_versions))
+        .route("/api/pages/{id}/versions/{version_id}/restore", post(restore_page_version))
         .route("/api/pages/import", post(import_page))
         .route("/api/pages/reorder", put(reorder_pages))
         .route("/api/pages/{id}/tags", put(update_tags))
