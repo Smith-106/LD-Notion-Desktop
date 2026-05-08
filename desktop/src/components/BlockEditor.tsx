@@ -16,6 +16,7 @@ import { useAppStore } from "../store/appStore";
 import { updatePageContent, uploadImage, exportPageHtml } from "../services/api";
 import TagBar from "./TagBar";
 import VersionPanel from "./VersionPanel";
+import { SlashCommands } from "./SlashCommand";
 import "./BlockEditor.css";
 
 const lowlight = createLowlight(common);
@@ -52,6 +53,7 @@ export default function BlockEditor() {
       TableCell,
       TableHeader,
       Image.configure({ inline: false, allowBase64: false }),
+      SlashCommands,
     ],
     editorProps: {
       attributes: {

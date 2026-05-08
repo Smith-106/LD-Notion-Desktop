@@ -3,6 +3,35 @@ import { useAppStore } from "../store/appStore";
 import { getPageContent } from "../services/api";
 import "./SearchResults.css";
 
+function highlightText(text: string, query: string): string {
+  if (!query.trim()) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escaped})`, "gi");
+  return text.replace(regex, "←HL→$1←/HL→");
+}
+
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const parts = highlightText(text, query).split(/←HL→|←\/HL→/);
+  const isHighlight: boolean[] = [];
+  let inHL = false;
+  for (let i = 0; i < parts.length; i++) {
+    isHighlight.push(inHL);
+    inHL = !inHL;
+  }
+  return (
+    <>
+      {parts.map((part, i) =>
+        isHighlight[i] ? (
+          <mark key={i} className="search-highlight">{part}</mark>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 function SearchResults() {
   const searchQuery = useAppStore((s) => s.searchQuery);
   const searchResults = useAppStore((s) => s.searchResults);
@@ -49,8 +78,8 @@ function SearchResults() {
           onClick={() => handleSelect(r.page_id, r.title)}
           role="listitem"
         >
-          <span className="search-result-title">{r.title}</span>
-          <span className="search-result-snippet">{r.snippet}</span>
+          <span className="search-result-title"><HighlightedText text={r.title} query={searchQuery} /></span>
+          <span className="search-result-snippet"><HighlightedText text={r.snippet} query={searchQuery} /></span>
         </button>
       ))}
     </div>

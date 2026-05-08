@@ -181,3 +181,14 @@
 .tree-node-drop-target {
   border-top: 2px solid var(--ldb-color-brand-default);
 }
+
+.tree-node-drop-folder {
+  background: oklch(0.56 0.22 255 / 0.15);
+  outline: 2px solid var(--ldb-color-brand-default);
+  outline-offset: -2px;
+  border-radius: var(--ldb-radius-sm);
+}
+
+[data-ldb-theme="dark"] .tree-node-drop-folder {
+  background: oklch(0.72 0.18 250 / 0.18);
+}

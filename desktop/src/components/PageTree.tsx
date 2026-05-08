@@ -11,6 +11,7 @@ import {
   listPinnedPages,
   listRecentPages,
   reorderPages,
+  movePage,
 } from "../services/api";
 import "./PageTree.css";
 
@@ -171,6 +172,27 @@ function TreeNode({ node, depth }: TreeNodeProps) {
     }
   }, [dragNodeId, node.id, setDropTargetId]);
 
+  // 检查 sourceId 是否是 target 的后代（防止循环移入）
+  const isDescendant = useCallback((tree: typeof pageTree, ancestorId: string, descendantId: string): boolean => {
+    function walk(nodes: typeof tree): boolean {
+      for (const n of nodes) {
+        if (n.id === ancestorId) {
+          return checkDescendant(n.children, descendantId);
+        }
+        if (walk(n.children)) return true;
+      }
+      return false;
+    }
+    function checkDescendant(nodes: typeof tree, id: string): boolean {
+      for (const n of nodes) {
+        if (n.id === id) return true;
+        if (checkDescendant(n.children, id)) return true;
+      }
+      return false;
+    }
+    return walk(tree);
+  }, []);
+
   const handleDragLeave = useCallback(() => {
     if (dropTargetId === node.id) {
       setDropTargetId(null);
@@ -182,32 +204,45 @@ function TreeNode({ node, depth }: TreeNodeProps) {
     const sourceId = e.dataTransfer.getData("text/plain");
     if (!sourceId || sourceId === node.id || !activeWorkspaceId) return;
 
-    function collectSiblingIds(tree: typeof pageTree, targetId: string): string[] | null {
-      for (let i = 0; i < tree.length; i++) {
-        if (tree[i].id === targetId) {
-          const ids = tree.filter(n => n.id !== sourceId).map(n => n.id);
-          ids.splice(ids.indexOf(targetId), 0, sourceId);
-          return ids;
-        }
-        const result = collectSiblingIds(tree[i].children, targetId);
-        if (result) return result;
-      }
-      return null;
-    }
-
-    const newOrder = collectSiblingIds(pageTree, node.id);
-    if (newOrder) {
+    // 如果目标是文件夹，移入该文件夹
+    if (node.is_folder) {
+      if (isDescendant(pageTree, sourceId, node.id)) return;
       try {
-        await reorderPages(newOrder);
+        await movePage(sourceId, node.id);
         const tree = await getPageTree(activeWorkspaceId);
         setPageTree(tree);
       } catch (err) {
-        alert(`排序失败: ${err}`);
+        alert(`移入文件夹失败: ${err}`);
+      }
+    } else {
+      // 同级排序
+      function collectSiblingIds(tree: typeof pageTree, targetId: string): string[] | null {
+        for (let i = 0; i < tree.length; i++) {
+          if (tree[i].id === targetId) {
+            const ids = tree.filter(n => n.id !== sourceId).map(n => n.id);
+            ids.splice(ids.indexOf(targetId), 0, sourceId);
+            return ids;
+          }
+          const result = collectSiblingIds(tree[i].children, targetId);
+          if (result) return result;
+        }
+        return null;
+      }
+
+      const newOrder = collectSiblingIds(pageTree, node.id);
+      if (newOrder) {
+        try {
+          await reorderPages(newOrder);
+          const tree = await getPageTree(activeWorkspaceId);
+          setPageTree(tree);
+        } catch (err) {
+          alert(`排序失败: ${err}`);
+        }
       }
     }
     setDragNodeId(null);
     setDropTargetId(null);
-  }, [node.id, activeWorkspaceId, pageTree, setDragNodeId, setDropTargetId, setPageTree]);
+  }, [node.id, node.is_folder, activeWorkspaceId, pageTree, isDescendant, setDragNodeId, setDropTargetId, setPageTree]);
 
   const handleDragEnd = useCallback(() => {
     setDragNodeId(null);
@@ -217,7 +252,7 @@ function TreeNode({ node, depth }: TreeNodeProps) {
   return (
     <div className="tree-node-container">
       <div
-        className={`tree-node ${isActive ? "tree-node-active" : ""} ${dragNodeId === node.id ? "tree-node-dragging" : ""} ${dropTargetId === node.id ? "tree-node-drop-target" : ""}`}
+        className={`tree-node ${isActive ? "tree-node-active" : ""} ${dragNodeId === node.id ? "tree-node-dragging" : ""} ${dropTargetId === node.id ? (node.is_folder ? "tree-node-drop-folder" : "tree-node-drop-target") : ""}`}
         style={{ paddingLeft: `calc(var(--ldb-spacing-2) + ${depth} * 1rem)` }}
         role="treeitem"
         aria-expanded={hasChildren ? isExpanded : undefined}
