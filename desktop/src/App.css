@@ -83,3 +83,10 @@
   font-size: var(--ldb-font-size-xs);
   color: var(--ldb-color-text-tertiary);
 }
+
+/* 专注模式 */
+.focus-mode .editor-area {
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}

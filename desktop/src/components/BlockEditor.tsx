@@ -16,6 +16,7 @@ import { useAppStore } from "../store/appStore";
 import { updatePageContent, uploadImage, exportPageHtml } from "../services/api";
 import TagBar from "./TagBar";
 import VersionPanel from "./VersionPanel";
+import OutlinePanel from "./OutlinePanel";
 import { SlashCommands } from "./SlashCommand";
 import "./BlockEditor.css";
 
@@ -27,6 +28,8 @@ export default function BlockEditor() {
   const currentPage = useAppStore((s) => s.currentPage);
   const setCurrentPageContent = useAppStore((s) => s.setCurrentPageContent);
   const setCurrentPageSaved = useAppStore((s) => s.setCurrentPageSaved);
+  const focusMode = useAppStore((s) => s.focusMode);
+  const setFocusMode = useAppStore((s) => s.setFocusMode);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentPageIdRef = useRef<string | null>(null);
 
@@ -142,6 +145,36 @@ export default function BlockEditor() {
       el.removeEventListener("mouseleave", handleLeave, true);
     };
   }, [editor]);
+
+  // Mermaid 图表渲染
+  useEffect(() => {
+    if (!editor) return;
+    const renderMermaid = async () => {
+      const container = document.querySelector(".block-editor-content");
+      if (!container) return;
+      const codeBlocks = container.querySelectorAll("pre code.language-mermaid");
+      for (const block of codeBlocks) {
+        const pre = block.parentElement;
+        if (!pre || pre.querySelector(".mermaid-output")) continue;
+        const source = block.textContent || "";
+        try {
+          const mermaid = (await import("mermaid")).default;
+          mermaid.initialize({ startOnLoad: false, theme: "default" });
+          const { svg } = await mermaid.render(`mermaid-${Date.now()}`, source);
+          const wrapper = document.createElement("div");
+          wrapper.className = "mermaid-output";
+          wrapper.innerHTML = svg;
+          wrapper.style.padding = "16px";
+          wrapper.style.overflow = "auto";
+          pre.appendChild(wrapper);
+        } catch {
+          // mermaid 解析失败时静默跳过
+        }
+      }
+    };
+    const timer = setTimeout(renderMermaid, 500);
+    return () => clearTimeout(timer);
+  }, [editor, currentPage?.body]);
 
   useEffect(() => {
     return () => {
@@ -276,6 +309,7 @@ export default function BlockEditor() {
             <path d="M5 3L1 8l4 5M11 3l4 5-4 5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        <OutlinePanel />
         <VersionPanel />
       </div>
       <TagBar />
@@ -289,7 +323,11 @@ export default function BlockEditor() {
           )}
         </span>
         <span className="editor-status-save">
-          {copyActive ? "已复制" : currentPage && (currentPage.saved ? "已保存" : "保存中…")}
+          {focusMode ? (
+            <button className="focus-mode-exit" onClick={() => setFocusMode(false)}>
+              退出专注模式 (F11)
+            </button>
+          ) : copyActive ? "已复制" : currentPage && (currentPage.saved ? "已保存" : "保存中…")}
         </span>
       </div>
     </div>

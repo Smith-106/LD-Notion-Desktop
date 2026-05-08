@@ -6,6 +6,7 @@ const SHORTCUTS = [
   { keys: "Ctrl + Shift + N", desc: "新建页面" },
   { keys: "Ctrl + Shift + F", desc: "聚焦搜索" },
   { keys: "Ctrl + K", desc: "搜索" },
+  { keys: "F11", desc: "专注模式" },
   { keys: "Ctrl + Z", desc: "撤销" },
   { keys: "Ctrl + Shift + Z", desc: "重做" },
   { keys: "Ctrl + B", desc: "加粗" },

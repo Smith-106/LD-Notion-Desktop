@@ -202,3 +202,29 @@
   outline: 2px solid var(--ldb-color-brand-default);
   outline-offset: -2px;
 }
+
+.focus-mode-exit {
+  background: none;
+  border: 1px solid var(--ldb-color-border-default);
+  color: var(--ldb-color-text-secondary);
+  font-size: var(--ldb-font-size-xs);
+  padding: 2px 8px;
+  border-radius: var(--ldb-radius-xs);
+  cursor: pointer;
+}
+.focus-mode-exit:hover {
+  background: oklch(0.14 0.015 260 / 0.06);
+}
+
+.mermaid-output svg {
+  max-width: 100%;
+  height: auto;
+}
+.mermaid-output {
+  background: oklch(0.98 0.005 260);
+  border-radius: var(--ldb-radius-sm);
+  margin-top: 8px;
+}
+[data-ldb-theme="dark"] .mermaid-output {
+  background: oklch(0.18 0.01 260);
+}

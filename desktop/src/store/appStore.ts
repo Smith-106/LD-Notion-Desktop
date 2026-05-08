@@ -79,6 +79,10 @@ interface AppState {
   setDragNodeId: (id: string | null) => void;
   dropTargetId: string | null;
   setDropTargetId: (id: string | null) => void;
+
+  // 专注模式
+  focusMode: boolean;
+  setFocusMode: (mode: boolean) => void;
 }
 
 function loadTheme(): ThemeMode {
@@ -198,4 +202,7 @@ export const useAppStore = create<AppState>((set) => ({
   setDragNodeId: (dragNodeId) => set({ dragNodeId }),
   dropTargetId: null,
   setDropTargetId: (dropTargetId) => set({ dropTargetId }),
+
+  focusMode: false,
+  setFocusMode: (focusMode) => set({ focusMode }),
 }));

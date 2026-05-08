@@ -14,6 +14,8 @@ function App() {
   useTheme();
   const activeWorkspaceId = useAppStore((s) => s.activeWorkspaceId);
   const setPageTree = useAppStore((s) => s.setPageTree);
+  const focusMode = useAppStore((s) => s.focusMode);
+  const setFocusMode = useAppStore((s) => s.setFocusMode);
 
   const handleGlobalShortcut = useCallback((e: KeyboardEvent) => {
     if (e.ctrlKey && e.shiftKey && e.key === "N") {
@@ -30,7 +32,11 @@ function App() {
       e.preventDefault();
       document.querySelector<HTMLElement>(".search-input")?.focus();
     }
-  }, [activeWorkspaceId, setPageTree]);
+    if (e.key === "F11") {
+      e.preventDefault();
+      setFocusMode(!focusMode);
+    }
+  }, [activeWorkspaceId, setPageTree, focusMode, setFocusMode]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleGlobalShortcut);
@@ -38,18 +44,20 @@ function App() {
   }, [handleGlobalShortcut]);
 
   return (
-    <div className="app-shell">
-      <header className="app-header" role="banner">
-        <div className="header-left">
-          <span className="app-logo">LD-Notion Hub</span>
-        </div>
-        <div className="header-right">
-          <KeyboardShortcuts />
-          <ThemeToggle />
-        </div>
-      </header>
+    <div className={`app-shell ${focusMode ? "focus-mode" : ""}`}>
+      {!focusMode && (
+        <header className="app-header" role="banner">
+          <div className="header-left">
+            <span className="app-logo">LD-Notion Hub</span>
+          </div>
+          <div className="header-right">
+            <KeyboardShortcuts />
+            <ThemeToggle />
+          </div>
+        </header>
+      )}
       <div className="app-body">
-        <Sidebar />
+        {!focusMode && <Sidebar />}
         <main className="editor-area" role="main">
           <Routes>
             <Route path="/" element={<EditorPage />} />
