@@ -264,3 +264,44 @@ export async function searchPages(
   );
   return data.data.results;
 }
+
+// ── 回收站 ──
+
+export interface TrashItem {
+  id: string;
+  workspace_id: string;
+  parent_id: string | null;
+  title: string;
+  is_folder: boolean;
+  original_created_at: string;
+  original_updated_at: string;
+  deleted_at: string;
+}
+
+export async function listTrash(workspaceId: string): Promise<TrashItem[]> {
+  const data = await request<{ data: TrashItem[] }>(
+    `/api/workspaces/${workspaceId}/trash`,
+  );
+  return data.data;
+}
+
+export async function restorePage(id: string): Promise<void> {
+  await request(`/api/pages/${id}/restore`, { method: "POST" });
+}
+
+export async function purgePage(id: string): Promise<void> {
+  await request(`/api/pages/${id}/purge`, { method: "DELETE" });
+}
+
+export async function emptyTrash(workspaceId: string): Promise<void> {
+  await request(`/api/workspaces/${workspaceId}/trash`, { method: "DELETE" });
+}
+
+// ── 排序 ──
+
+export async function reorderPages(pageIds: string[]): Promise<void> {
+  await request("/api/pages/reorder", {
+    method: "PUT",
+    body: JSON.stringify({ page_ids: pageIds }),
+  });
+}

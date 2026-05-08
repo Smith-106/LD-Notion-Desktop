@@ -174,3 +174,31 @@
 .editor-status-save {
   opacity: 0.7;
 }
+
+/* 表格样式 */
+.block-editor-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: var(--ldb-spacing-3) 0;
+  overflow: hidden;
+}
+
+.block-editor-content table td,
+.block-editor-content table th {
+  border: 1px solid var(--ldb-color-border-default);
+  padding: var(--ldb-spacing-1) var(--ldb-spacing-2);
+  min-width: 60px;
+  vertical-align: top;
+  position: relative;
+}
+
+.block-editor-content table th {
+  background: var(--ldb-color-surface-elevated);
+  font-weight: var(--ldb-font-weight-semibold);
+}
+
+.block-editor-content table td:focus,
+.block-editor-content table th:focus {
+  outline: 2px solid var(--ldb-color-brand-default);
+  outline-offset: -2px;
+}

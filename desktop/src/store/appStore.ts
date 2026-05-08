@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Page, PageTreeNode, SearchResult, TagInfo, Workspace } from "../services/api";
+import type { Page, PageTreeNode, SearchResult, TagInfo, TrashItem, Workspace } from "../services/api";
 
 export type ThemeMode = "light" | "dark" | "auto";
 
@@ -69,6 +69,10 @@ interface AppState {
   batchIds: Set<string>;
   setBatchIds: (ids: Set<string>) => void;
   toggleBatchId: (id: string) => void;
+
+  // 回收站
+  trashItems: TrashItem[];
+  setTrashItems: (items: TrashItem[]) => void;
 }
 
 function loadTheme(): ThemeMode {
@@ -180,4 +184,7 @@ export const useAppStore = create<AppState>((set) => ({
       if (next.has(id)) next.delete(id); else next.add(id);
       return { batchIds: next };
     }),
+
+  trashItems: [],
+  setTrashItems: (trashItems) => set({ trashItems }),
 }));

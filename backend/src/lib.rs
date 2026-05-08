@@ -13,6 +13,7 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+use rusqlite::params;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -260,8 +261,7 @@ pub async fn delete_page(
     Path(id): Path<String>,
 ) -> Json<Value> {
     let conn = state.db.lock().await;
-    let _ = search::deindex_page(&conn, &id);
-    match engine::page::delete(&conn, &id, &state.config.storage_root) {
+    match engine::trash::soft_delete(&conn, &id, &state.config.storage_root) {
         Ok(removed) => Json(json!({"ok": true, "removed": removed})),
         Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
     }
@@ -417,4 +417,73 @@ pub async fn toggle_pin(
         Ok(page) => Json(json!({"ok": true, "data": page})),
         Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
     }
+}
+
+// ── 回收站 API ──
+
+pub async fn list_trash(
+    State(state): State<Arc<AppState>>,
+    Path(ws_id): Path<String>,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    match engine::trash::list(&conn, &ws_id) {
+        Ok(items) => Json(json!({"ok": true, "data": items})),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+pub async fn restore_page(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    match engine::trash::restore(&conn, &id, &state.config.storage_root) {
+        Ok(restored) => Json(json!({"ok": true, "restored": restored})),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+pub async fn purge_page(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    match engine::trash::purge(&conn, &id, &state.config.storage_root) {
+        Ok(removed) => Json(json!({"ok": true, "removed": removed})),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+pub async fn empty_trash(
+    State(state): State<Arc<AppState>>,
+    Path(ws_id): Path<String>,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    match engine::trash::empty(&conn, &ws_id, &state.config.storage_root) {
+        Ok(count) => Json(json!({"ok": true, "count": count})),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+// ── 页面排序 API ──
+
+#[derive(Deserialize)]
+pub struct ReorderReq {
+    pub page_ids: Vec<String>,
+}
+
+pub async fn reorder_pages(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<ReorderReq>,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    for (i, id) in body.page_ids.iter().enumerate() {
+        if let Err(e) = conn.execute(
+            "UPDATE pages SET sort_order = ?1 WHERE id = ?2",
+            params![(i + 1) as i32, id],
+        ) {
+            return Json(json!({"ok": false, "error": e.to_string()}));
+        }
+    }
+    Json(json!({"ok": true}))
 }

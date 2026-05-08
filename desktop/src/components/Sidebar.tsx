@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import PageTree from "./PageTree";
 import SearchBar from "./SearchBar";
@@ -18,6 +18,10 @@ import {
   listPinnedPages,
   togglePagePin,
   getPageContent,
+  listTrash as listTrashApi,
+  restorePage,
+  purgePage,
+  emptyTrash,
 } from "../services/api";
 import "./Sidebar.css";
 
@@ -44,6 +48,9 @@ function Sidebar() {
   const setBatchMode = useAppStore((s) => s.setBatchMode);
   const batchIds = useAppStore((s) => s.batchIds);
   const setBatchIds = useAppStore((s) => s.setBatchIds);
+  const trashItems = useAppStore((s) => s.trashItems);
+  const setTrashItems = useAppStore((s) => s.setTrashItems);
+  const [showTrash, setShowTrash] = useState(false);
   useMcpStatus();
 
   useEffect(() => {
@@ -162,7 +169,38 @@ function Sidebar() {
       listPinnedPages(activeWorkspaceId).then(setPinnedPages).catch(() => {});
     }
     if (failed > 0) alert(`${failed} 个页面删除失败`);
-  }, [batchIds, activeWorkspaceId, setPageTree, setRecentPages, setPinnedPages, setBatchMode]);
+  }, [batchIds, activeWorkspaceId, setPageTree, setRecentPages, setPinnedPages, setBatchMode, setBatchIds]);
+
+  const loadTrash = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      const items = await listTrashApi(activeWorkspaceId);
+      setTrashItems(items);
+    } catch {}
+  }, [activeWorkspaceId, setTrashItems]);
+
+  const handleRestore = useCallback(async (id: string) => {
+    try {
+      await restorePage(id);
+      await loadTrash();
+      if (activeWorkspaceId) {
+        const tree = await getPageTree(activeWorkspaceId);
+        setPageTree(tree);
+      }
+    } catch (err) { alert(`恢复失败: ${err}`); }
+  }, [loadTrash, activeWorkspaceId, setPageTree]);
+
+  const handlePurge = useCallback(async (id: string, title: string) => {
+    if (!confirm(`永久删除「${title}」？此操作不可恢复。`)) return;
+    try { await purgePage(id); await loadTrash(); }
+    catch (err) { alert(`删除失败: ${err}`); }
+  }, [loadTrash]);
+
+  const handleEmptyTrash = useCallback(async () => {
+    if (!confirm("清空回收站？所有页面将永久删除，不可恢复。")) return;
+    try { await emptyTrash(activeWorkspaceId!); await loadTrash(); }
+    catch (err) { alert(`清空失败: ${err}`); }
+  }, [activeWorkspaceId, loadTrash]);
 
   const collectAllPageIds = useCallback((): string[] => {
     const ids: string[] = [];
@@ -362,8 +400,45 @@ function Sidebar() {
       <div className="page-tree-wrapper">
         {searchQuery.trim().length >= 2 ? <SearchResults /> : <PageTree />}
       </div>
+      {showTrash && (
+        <div className="sidebar-trash-panel">
+          <div className="sidebar-trash-header">
+            <span>回收站 ({trashItems.length})</span>
+            <div>
+              {trashItems.length > 0 && (
+                <button className="sidebar-trash-action" onClick={handleEmptyTrash}>清空</button>
+              )}
+              <button className="sidebar-trash-action" onClick={() => setShowTrash(false)}>关闭</button>
+            </div>
+          </div>
+          {trashItems.length === 0 ? (
+            <p className="sidebar-trash-empty">回收站为空</p>
+          ) : (
+            trashItems.map((item) => (
+              <div key={item.id} className="sidebar-trash-item">
+                <span className="sidebar-trash-title">
+                  {item.is_folder ? "📁 " : ""}{item.title}
+                </span>
+                <div className="sidebar-trash-actions">
+                  <button className="sidebar-trash-action" onClick={() => handleRestore(item.id)}>恢复</button>
+                  <button className="sidebar-trash-action danger" onClick={() => handlePurge(item.id, item.title)}>删除</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
       <div className="sidebar-footer">
         <StatusIndicator />
+        <button
+          className="sidebar-trash-toggle"
+          onClick={() => { setShowTrash(!showTrash); if (!showTrash) loadTrash(); }}
+          title="回收站"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M4 1a1 1 0 011-1h6a1 1 0 011 1v1h3a.5.5 0 010 1h-1l-.5 10.5a2 2 0 01-2 1.5h-5a2 2 0 01-2-1.5L3.5 3h-1a.5.5 0 010-1h3V1zm1 1v0h5V1H5v1z" />
+          </svg>
+        </button>
         <Link to="/settings" className="sidebar-settings-link">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 10a2 2 0 100-4 2 2 0 000 4z" />

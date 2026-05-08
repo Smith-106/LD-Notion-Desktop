@@ -28,7 +28,7 @@ pub fn create(
     // 确定 sort_order
     let sort_order: i32 = conn
         .query_row(
-            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pages WHERE workspace_id = ?1 AND parent_id IS ?2",
+            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pages WHERE workspace_id = ?1 AND parent_id IS ?2 AND deleted_at IS NULL",
             params![workspace_id, parent_id],
             |row| row.get(0),
         )
@@ -93,7 +93,7 @@ pub fn create_folder(
 
     let sort_order: i32 = conn
         .query_row(
-            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pages WHERE workspace_id = ?1 AND parent_id IS ?2",
+            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pages WHERE workspace_id = ?1 AND parent_id IS ?2 AND deleted_at IS NULL",
             params![workspace_id, parent_id],
             |row| row.get(0),
         )
@@ -136,7 +136,7 @@ pub fn create_folder(
 pub fn find(conn: &Connection, id: &str) -> Result<Option<Page>, Box<dyn std::error::Error>> {
     let mut stmt = conn.prepare(
         "SELECT id, workspace_id, parent_id, title, slug, file_path, sort_order, is_folder, is_pinned, created_at, updated_at
-         FROM pages WHERE id = ?1",
+         FROM pages WHERE id = ?1 AND deleted_at IS NULL",
     )?;
     let mut rows = stmt.query_map([id], |row| {
         Ok(Page {
@@ -275,7 +275,7 @@ pub fn duplicate(
 pub fn list_by_workspace(conn: &Connection, workspace_id: &str) -> Result<Vec<Page>, Box<dyn std::error::Error>> {
     let mut stmt = conn.prepare(
         "SELECT id, workspace_id, parent_id, title, slug, file_path, sort_order, is_folder, is_pinned, created_at, updated_at
-         FROM pages WHERE workspace_id = ?1 ORDER BY sort_order",
+         FROM pages WHERE workspace_id = ?1 AND deleted_at IS NULL ORDER BY sort_order",
     )?;
     let rows = stmt.query_map([workspace_id], |row| {
         Ok(Page {
@@ -390,7 +390,7 @@ pub fn move_to(
     // 确定 sort_order
     let sort_order: i32 = conn
         .query_row(
-            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pages WHERE workspace_id = ?1 AND parent_id IS ?2",
+            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pages WHERE workspace_id = ?1 AND parent_id IS ?2 AND deleted_at IS NULL",
             params![page.workspace_id, new_parent_id],
             |row| row.get(0),
         )
@@ -519,7 +519,7 @@ fn title_to_slug(title: &str) -> String {
 pub fn list_recent(conn: &Connection, workspace_id: &str, limit: i32) -> Result<Vec<Page>, Box<dyn std::error::Error>> {
     let mut stmt = conn.prepare(
         "SELECT id, workspace_id, parent_id, title, slug, file_path, sort_order, is_folder, is_pinned, created_at, updated_at
-         FROM pages WHERE workspace_id = ?1 ORDER BY updated_at DESC LIMIT ?2",
+         FROM pages WHERE workspace_id = ?1 AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT ?2",
     )?;
     let rows = stmt.query_map(params![workspace_id, limit], |row| {
         Ok(Page {
@@ -543,7 +543,7 @@ pub fn list_recent(conn: &Connection, workspace_id: &str, limit: i32) -> Result<
 pub fn list_pinned(conn: &Connection, workspace_id: &str) -> Result<Vec<Page>, Box<dyn std::error::Error>> {
     let mut stmt = conn.prepare(
         "SELECT id, workspace_id, parent_id, title, slug, file_path, sort_order, is_folder, is_pinned, created_at, updated_at
-         FROM pages WHERE workspace_id = ?1 AND is_pinned = 1 ORDER BY sort_order",
+         FROM pages WHERE workspace_id = ?1 AND is_pinned = 1 AND deleted_at IS NULL ORDER BY sort_order",
     )?;
     let rows = stmt.query_map([workspace_id], |row| {
         Ok(Page {

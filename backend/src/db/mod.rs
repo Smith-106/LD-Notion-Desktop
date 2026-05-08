@@ -31,6 +31,13 @@ pub fn initialize(database_path: &Path, storage_root: &Path) -> Result<Connectio
         Err(e) => return Err(e),
     }
 
+    // 增量迁移：为旧数据库添加 deleted_at 列（软删除）
+    match conn.execute_batch("ALTER TABLE pages ADD COLUMN deleted_at TEXT;") {
+        Ok(()) => {}
+        Err(e) if e.to_string().contains("duplicate column") => {}
+        Err(e) => return Err(e),
+    }
+
     // 初始化 Markdown 存储目录结构（按 workspace 隔离）
     // 实际子目录在创建 workspace 时动态建立，此处仅确保根目录存在
     fs::create_dir_all(storage_root)
@@ -47,7 +54,7 @@ pub fn initialize(database_path: &Path, storage_root: &Path) -> Result<Connectio
 
 /// 验证数据库 schema 完整性 — 检查 4 张核心表是否存在
 pub fn validate_schema(conn: &Connection) -> Result<()> {
-    let expected_tables = ["workspaces", "pages", "page_tree", "fts_index"];
+    let expected_tables = ["workspaces", "pages", "page_tree", "fts_index", "trash"];
     let mut stmt = conn.prepare(
         "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'",
     )?;

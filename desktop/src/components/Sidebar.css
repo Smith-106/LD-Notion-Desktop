@@ -160,3 +160,81 @@
 .sidebar-settings-link:hover {
   color: var(--ldb-color-text-primary);
 }
+
+/* 回收站 */
+.sidebar-trash-toggle {
+  background: none;
+  border: none;
+  color: var(--ldb-color-text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--ldb-radius-sm);
+}
+.sidebar-trash-toggle:hover {
+  color: var(--ldb-color-text-primary);
+}
+
+.sidebar-trash-panel {
+  border-top: 1px solid var(--ldb-color-border-default);
+  padding: var(--ldb-spacing-2);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.sidebar-trash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--ldb-font-size-xs);
+  font-weight: var(--ldb-font-weight-semibold);
+  color: var(--ldb-color-text-secondary);
+  margin-bottom: var(--ldb-spacing-1);
+}
+
+.sidebar-trash-empty {
+  font-size: var(--ldb-font-size-xs);
+  color: var(--ldb-color-text-tertiary);
+  text-align: center;
+  padding: var(--ldb-spacing-2);
+}
+
+.sidebar-trash-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  font-size: var(--ldb-font-size-xs);
+}
+
+.sidebar-trash-title {
+  color: var(--ldb-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: var(--ldb-spacing-2);
+}
+
+.sidebar-trash-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sidebar-trash-action {
+  background: none;
+  border: none;
+  color: var(--ldb-color-brand-default);
+  font-size: var(--ldb-font-size-xs);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.sidebar-trash-action:hover {
+  text-decoration: underline;
+}
+.sidebar-trash-action.danger {
+  color: var(--ldb-color-text-tertiary);
+}
+.sidebar-trash-action.danger:hover {
+  color: #dc2626;
+}

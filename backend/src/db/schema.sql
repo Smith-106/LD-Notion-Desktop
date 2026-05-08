@@ -30,6 +30,25 @@ CREATE TABLE IF NOT EXISTS pages (
 -- SQLite 不支持 IF NOT EXISTS for ALTER TABLE，通过忽略错误实现幂等
 -- 实际在 Rust 代码中处理
 
+-- 增量迁移：为旧数据库添加 deleted_at 列（软删除）
+-- 实际在 Rust 代码中处理
+
+-- 回收站快照表（记录删除时的页面元信息）
+CREATE TABLE IF NOT EXISTS trash (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    parent_id TEXT,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    is_folder INTEGER NOT NULL DEFAULT 0,
+    body TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]',
+    original_created_at TEXT NOT NULL,
+    original_updated_at TEXT NOT NULL,
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 页面树表（物化路径缓存，加速祖先/后代查询）
 CREATE TABLE IF NOT EXISTS page_tree (
     ancestor_id TEXT NOT NULL REFERENCES pages(id),

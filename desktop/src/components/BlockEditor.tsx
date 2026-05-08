@@ -4,6 +4,10 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
 import { common, createLowlight } from "lowlight";
 import { Markdown as tiptapMarkdown } from "tiptap-markdown";
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -41,6 +45,10 @@ export default function BlockEditor() {
         placeholder: "开始输入内容，或使用 / 命令…",
       }),
       tiptapMarkdown,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableCell,
+      TableHeader,
     ],
     editorProps: {
       attributes: {
@@ -187,6 +195,12 @@ export default function BlockEditor() {
         <ToolbarButton editor={editor} action="toggleBulletList" label="UL" />
         <ToolbarButton editor={editor} action="toggleOrderedList" label="OL" />
         <ToolbarButton editor={editor} action="toggleCodeBlock" label="Code" />
+        <div className="toolbar-separator" />
+        <button className="toolbar-btn" onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="插入表格">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M1 3h14v10H1V3zm1 1v3h5V4H2zm6 0v3h6V4H8zM2 8v4h5V8H2zm6 0v4h6V8H8z" />
+          </svg>
+        </button>
         <div className="toolbar-separator" />
         <button className="toolbar-btn" onClick={handleExport} title="导出 Markdown">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
