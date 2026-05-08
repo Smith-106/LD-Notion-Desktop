@@ -1,13 +1,40 @@
 import { Routes, Route } from "react-router-dom";
+import { useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import EditorPage from "./pages/EditorPage";
 import SettingsPage from "./pages/SettingsPage";
 import ThemeToggle from "./components/ThemeToggle";
 import { useTheme } from "./hooks/useTheme";
+import { useAppStore } from "./store/appStore";
+import { createPage, getPageTree } from "./services/api";
 import "./App.css";
 
 function App() {
   useTheme();
+  const activeWorkspaceId = useAppStore((s) => s.activeWorkspaceId);
+  const setPageTree = useAppStore((s) => s.setPageTree);
+
+  const handleGlobalShortcut = useCallback((e: KeyboardEvent) => {
+    if (e.ctrlKey && e.shiftKey && e.key === "N") {
+      e.preventDefault();
+      if (!activeWorkspaceId) return;
+      const title = prompt("页面标题:");
+      if (!title?.trim()) return;
+      createPage(activeWorkspaceId, title.trim()).then(async () => {
+        const tree = await getPageTree(activeWorkspaceId);
+        setPageTree(tree);
+      }).catch((err) => alert(`创建失败: ${err}`));
+    }
+    if (e.ctrlKey && e.shiftKey && e.key === "F") {
+      e.preventDefault();
+      document.querySelector<HTMLElement>(".search-input")?.focus();
+    }
+  }, [activeWorkspaceId, setPageTree]);
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleGlobalShortcut);
+    return () => document.removeEventListener("keydown", handleGlobalShortcut);
+  }, [handleGlobalShortcut]);
 
   return (
     <div className="app-shell">

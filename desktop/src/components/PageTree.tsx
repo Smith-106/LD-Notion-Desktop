@@ -29,6 +29,7 @@ interface TreeNodeProps {
   node: {
     id: string;
     title: string;
+    is_folder?: boolean;
     is_pinned?: boolean;
     children: any[];
   };
@@ -198,7 +199,15 @@ function TreeNode({ node, depth }: TreeNodeProps) {
           <span className="tree-node-chevron-placeholder" />
         )}
         <span className="tree-node-icon">
-          {hasChildren ? (
+          {node.is_folder ? (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" opacity="0.6">
+              {isExpanded ? (
+                <path d="M1.5 2A1.5 1.5 0 000 3.5v9A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5V5.5A1.5 1.5 0 0014.5 4H7.707L6.354 2.646A.5.5 0 006 2.5H1.5z" />
+              ) : (
+                <path d="M1.5 2A1.5 1.5 0 000 3.5v9A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5V5.5A1.5 1.5 0 0014.5 4H7.707L6.354 2.646A.5.5 0 006 2.5H1.5z" />
+              )}
+            </svg>
+          ) : hasChildren ? (
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               {isExpanded ? (
                 <path d="M3 3h4v10H3V3zm6 0h4v10H9V3z" opacity="0.5" />

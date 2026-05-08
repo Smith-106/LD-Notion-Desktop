@@ -40,6 +40,8 @@ pub struct CreatePageReq {
     pub workspace_id: String,
     pub parent_id: Option<String>,
     pub title: String,
+    #[serde(default)]
+    pub is_folder: bool,
 }
 
 #[derive(Deserialize)]
@@ -188,13 +190,18 @@ pub async fn create_page(
     }
     let conn = state.db.lock().await;
     let parent_id = body.parent_id.as_deref().filter(|s| !s.is_empty());
-    match engine::page::create(
-        &conn,
-        &body.workspace_id,
-        parent_id,
-        title,
-        &state.config.storage_root,
-    ) {
+    let result = if body.is_folder {
+        engine::page::create_folder(&conn, &body.workspace_id, parent_id, title)
+    } else {
+        engine::page::create(
+            &conn,
+            &body.workspace_id,
+            parent_id,
+            title,
+            &state.config.storage_root,
+        )
+    };
+    match result {
         Ok(page) => Json(json!({"ok": true, "data": page})),
         Err(e) => {
             let msg = e.to_string();

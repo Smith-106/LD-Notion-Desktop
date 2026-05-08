@@ -91,6 +91,19 @@ function Sidebar() {
     }
   }, [activeWorkspaceId, setPageTree]);
 
+  const handleCreateFolder = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    const title = prompt("文件夹名称:");
+    if (!title?.trim()) return;
+    try {
+      await createPage(activeWorkspaceId, title.trim(), undefined, true);
+      const tree = await getPageTree(activeWorkspaceId);
+      setPageTree(tree);
+    } catch (err) {
+      alert(`创建失败: ${err}`);
+    }
+  }, [activeWorkspaceId, setPageTree]);
+
   const handleImport = useCallback(async () => {
     if (!activeWorkspaceId) return;
     const input = document.createElement("input");
@@ -186,6 +199,16 @@ function Sidebar() {
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" fill="none" />
+            </svg>
+          </button>
+          <button
+            className="sidebar-action-btn"
+            onClick={handleCreateFolder}
+            title="新建文件夹"
+            disabled={!activeWorkspaceId}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1.5 2A1.5 1.5 0 000 3.5v9A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5V5.5A1.5 1.5 0 0014.5 4H7.707L6.354 2.646A.5.5 0 006 2.5H1.5z" />
             </svg>
           </button>
           <button

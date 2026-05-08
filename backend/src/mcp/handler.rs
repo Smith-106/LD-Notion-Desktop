@@ -37,6 +37,43 @@ fn get_tools() -> Vec<ToolDef> {
             }),
         },
         ToolDef {
+            name: "page/create",
+            description: "在工作区中创建新页面",
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "workspace_id": { "type": "string", "description": "工作区 ID" },
+                    "title": { "type": "string", "description": "页面标题" },
+                    "parent_id": { "type": "string", "description": "父页面 ID（可选）" },
+                    "body": { "type": "string", "description": "页面内容（Markdown，可选）" }
+                },
+                "required": ["workspace_id", "title"]
+            }),
+        },
+        ToolDef {
+            name: "page/update",
+            description: "更新页面内容",
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "page_id": { "type": "string", "description": "页面 ID" },
+                    "body": { "type": "string", "description": "新的页面内容（Markdown）" }
+                },
+                "required": ["page_id", "body"]
+            }),
+        },
+        ToolDef {
+            name: "page/delete",
+            description: "删除页面（级联删除子页面）",
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "page_id": { "type": "string", "description": "页面 ID" }
+                },
+                "required": ["page_id"]
+            }),
+        },
+        ToolDef {
             name: "search",
             description: "全文搜索知识库内容",
             input_schema: serde_json::json!({
@@ -97,6 +134,9 @@ pub async fn handle_tools_call(
     let result = match tool_name {
         "page/list" => handle_page_list(state, &arguments).await,
         "page/read" => handle_page_read(state, &arguments).await,
+        "page/create" => handle_page_create(state, &arguments).await,
+        "page/update" => handle_page_update(state, &arguments).await,
+        "page/delete" => handle_page_delete(state, &arguments).await,
         "search" => handle_search(state, &arguments).await,
         _ => Err(format!("Unknown tool: {tool_name}")),
     };
@@ -169,4 +209,70 @@ async fn handle_search(
         "total": output.total,
         "results": output.results,
     }))
+}
+
+async fn handle_page_create(
+    state: &Arc<AppState>,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let workspace_id = args["workspace_id"].as_str().ok_or("Missing workspace_id")?;
+    let title = args["title"].as_str().ok_or("Missing title")?;
+    let parent_id = args["parent_id"].as_str();
+    let body = args["body"].as_str().unwrap_or("");
+
+    let page = {
+        let conn = state.db.lock().await;
+        crate::engine::page::create(&conn, workspace_id, parent_id, title, &state.config.storage_root)
+            .map_err(|e| e.to_string())?
+    };
+
+    if !body.is_empty() {
+        let conn = state.db.lock().await;
+        crate::engine::page::update_content(&conn, &page.id, body, &state.config.storage_root)
+            .map_err(|e| e.to_string())?;
+        let _ = crate::search::index_page(&conn, &page.id, title, body, "");
+    }
+
+    Ok(serde_json::json!({
+        "id": page.id,
+        "title": page.title,
+        "workspace_id": page.workspace_id,
+        "parent_id": page.parent_id,
+        "created_at": page.created_at,
+    }))
+}
+
+async fn handle_page_update(
+    state: &Arc<AppState>,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let page_id = args["page_id"].as_str().ok_or("Missing page_id")?;
+    let body = args["body"].as_str().ok_or("Missing body")?;
+
+    {
+        let conn = state.db.lock().await;
+        crate::engine::page::update_content(&conn, page_id, body, &state.config.storage_root)
+            .map_err(|e| e.to_string())?;
+        if let Ok(Some(content)) = crate::engine::page::read_content(&conn, page_id, &state.config.storage_root) {
+            let _ = crate::search::index_page(&conn, page_id, &content.title, &content.body, &content.tags.join(", "));
+        }
+    }
+
+    Ok(serde_json::json!({ "updated": true }))
+}
+
+async fn handle_page_delete(
+    state: &Arc<AppState>,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let page_id = args["page_id"].as_str().ok_or("Missing page_id")?;
+
+    let removed = {
+        let conn = state.db.lock().await;
+        let _ = crate::search::deindex_page(&conn, page_id);
+        crate::engine::page::delete(&conn, page_id, &state.config.storage_root)
+            .map_err(|e| e.to_string())?
+    };
+
+    Ok(serde_json::json!({ "removed": removed }))
 }

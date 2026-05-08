@@ -80,6 +80,58 @@ pub fn create(
     })
 }
 
+/// 创建文件夹（不含 Markdown 文件）
+pub fn create_folder(
+    conn: &Connection,
+    workspace_id: &str,
+    parent_id: Option<&str>,
+    title: &str,
+) -> Result<Page, Box<dyn std::error::Error>> {
+    let id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    let slug = format!("folder-{}", &id[..8]);
+
+    let sort_order: i32 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pages WHERE workspace_id = ?1 AND parent_id IS ?2",
+            params![workspace_id, parent_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(1);
+
+    conn.execute(
+        "INSERT INTO pages (id, workspace_id, parent_id, title, slug, file_path, sort_order, is_folder, is_pinned, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, '', ?6, 1, 0, ?7, ?8)",
+        params![id, workspace_id, parent_id, title, &slug, sort_order, &now, &now],
+    )?;
+
+    conn.execute(
+        "INSERT INTO page_tree (ancestor_id, descendant_id, depth) VALUES (?1, ?1, 0)",
+        [&id],
+    )?;
+    if let Some(pid) = parent_id {
+        conn.execute(
+            "INSERT INTO page_tree (ancestor_id, descendant_id, depth)
+             SELECT ancestor_id, ?1, depth + 1 FROM page_tree WHERE descendant_id = ?2",
+            params![&id, pid],
+        )?;
+    }
+
+    Ok(Page {
+        id,
+        workspace_id: workspace_id.to_string(),
+        parent_id: parent_id.map(std::string::ToString::to_string),
+        title: title.to_string(),
+        slug,
+        file_path: String::new(),
+        sort_order,
+        is_folder: true,
+        is_pinned: false,
+        created_at: now.clone(),
+        updated_at: now,
+    })
+}
+
 /// 按 ID 读取页面
 pub fn find(conn: &Connection, id: &str) -> Result<Option<Page>, Box<dyn std::error::Error>> {
     let mut stmt = conn.prepare(

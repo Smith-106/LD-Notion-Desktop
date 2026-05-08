@@ -102,12 +102,14 @@ export async function createPage(
   workspaceId: string,
   title: string,
   parentId?: string,
+  isFolder?: boolean,
 ): Promise<Page> {
-  const body: Record<string, string> = { workspace_id: workspaceId, title };
-  if (parentId) body.parent_id = parentId;
+  const reqBody: Record<string, unknown> = { workspace_id: workspaceId, title };
+  if (parentId) reqBody.parent_id = parentId;
+  if (isFolder) reqBody.is_folder = true;
   const data = await request<{ data: Page }>("/api/pages", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(reqBody),
   });
   return data.data;
 }
