@@ -305,3 +305,35 @@ export async function reorderPages(pageIds: string[]): Promise<void> {
     body: JSON.stringify({ page_ids: pageIds }),
   });
 }
+
+// ── 图片 ──
+
+export async function uploadImage(filename: string, data: ArrayBuffer): Promise<string> {
+  const res = await fetch(`/api/images/upload?filename=${encodeURIComponent(filename)}`, {
+    method: "POST",
+    body: data,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error);
+  return json.path;
+}
+
+// ── 备份 ──
+
+export async function exportWorkspace(workspaceId: string): Promise<Blob> {
+  const res = await fetch(`/api/workspaces/${workspaceId}/export`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.blob();
+}
+
+export async function importWorkspace(workspaceName: string, data: ArrayBuffer): Promise<string> {
+  const res = await fetch(`/api/workspaces/import?workspace_name=${encodeURIComponent(workspaceName)}`, {
+    method: "POST",
+    body: data,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error);
+  return json.workspace_id;
+}

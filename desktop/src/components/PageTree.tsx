@@ -10,6 +10,7 @@ import {
   duplicatePage,
   listPinnedPages,
   listRecentPages,
+  reorderPages,
 } from "../services/api";
 import "./PageTree.css";
 
@@ -49,6 +50,11 @@ function TreeNode({ node, depth }: TreeNodeProps) {
   const batchMode = useAppStore((s) => s.batchMode);
   const batchIds = useAppStore((s) => s.batchIds);
   const toggleBatchId = useAppStore((s) => s.toggleBatchId);
+  const dragNodeId = useAppStore((s) => s.dragNodeId);
+  const setDragNodeId = useAppStore((s) => s.setDragNodeId);
+  const dropTargetId = useAppStore((s) => s.dropTargetId);
+  const setDropTargetId = useAppStore((s) => s.setDropTargetId);
+  const pageTree = useAppStore((s) => s.pageTree);
   const isExpanded = expandedNodes.has(node.id);
   const hasChildren = node.children.length > 0;
   const isActive = currentPage?.id === node.id;
@@ -150,15 +156,80 @@ function TreeNode({ node, depth }: TreeNodeProps) {
     } catch {}
   }, [node.id, activeWorkspaceId, setPinnedPages, setRecentPages]);
 
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", node.id);
+    setDragNodeId(node.id);
+    setDropTargetId(null);
+  }, [node.id, setDragNodeId, setDropTargetId]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragNodeId && dragNodeId !== node.id) {
+      setDropTargetId(node.id);
+    }
+  }, [dragNodeId, node.id, setDropTargetId]);
+
+  const handleDragLeave = useCallback(() => {
+    if (dropTargetId === node.id) {
+      setDropTargetId(null);
+    }
+  }, [dropTargetId, node.id, setDropTargetId]);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("text/plain");
+    if (!sourceId || sourceId === node.id || !activeWorkspaceId) return;
+
+    function collectSiblingIds(tree: typeof pageTree, targetId: string): string[] | null {
+      for (let i = 0; i < tree.length; i++) {
+        if (tree[i].id === targetId) {
+          const ids = tree.filter(n => n.id !== sourceId).map(n => n.id);
+          const targetIdx = ids.indexOf(targetId);
+          ids.splice(targetIdx, 0, sourceId);
+          return ids;
+        }
+        const result = collectSiblingIds(tree[i].children, targetId);
+        if (result) return result;
+      }
+      return null;
+    }
+
+    const newOrder = collectSiblingIds(pageTree, node.id);
+    if (newOrder) {
+      try {
+        await reorderPages(newOrder);
+        const tree = await getPageTree(activeWorkspaceId);
+        setPageTree(tree);
+      } catch (err) {
+        alert(`排序失败: ${err}`);
+      }
+    }
+    setDragNodeId(null);
+    setDropTargetId(null);
+  }, [node.id, activeWorkspaceId, pageTree, setDragNodeId, setDropTargetId, setPageTree]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragNodeId(null);
+    setDropTargetId(null);
+  }, [setDragNodeId, setDropTargetId]);
+
   return (
     <div className="tree-node-container">
       <div
-        className={`tree-node ${isActive ? "tree-node-active" : ""}`}
+        className={`tree-node ${isActive ? "tree-node-active" : ""} ${dragNodeId === node.id ? "tree-node-dragging" : ""} ${dropTargetId === node.id ? "tree-node-drop-target" : ""}`}
         style={{ paddingLeft: `calc(var(--ldb-spacing-2) + ${depth} * 1rem)` }}
         role="treeitem"
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isActive}
         onClick={handleSelect}
+        draggable={!batchMode}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onDragEnd={handleDragEnd}
       >
         {batchMode && (
           <input

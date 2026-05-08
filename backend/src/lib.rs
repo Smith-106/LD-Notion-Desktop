@@ -13,6 +13,7 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+use axum::body::Bytes;
 use rusqlite::params;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -486,4 +487,92 @@ pub async fn reorder_pages(
         }
     }
     Json(json!({"ok": true}))
+}
+
+// ── 图片 API ──
+
+use axum::http::{header, StatusCode};
+use axum::response::{IntoResponse, Response};
+
+#[derive(Deserialize)]
+pub struct UploadQuery {
+    pub filename: String,
+}
+
+pub async fn upload_image(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<UploadQuery>,
+    body: Bytes,
+) -> Json<Value> {
+    match engine::image::save(&state.config.storage_root, &params.filename, &body) {
+        Ok(path) => Json(json!({"ok": true, "path": path})),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+pub async fn get_image(
+    State(state): State<Arc<AppState>>,
+    Path(path): Path<String>,
+) -> Response {
+    match engine::image::read(&state.config.storage_root, &path) {
+        Ok((bytes, mime)) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, mime)],
+            bytes,
+        ).into_response(),
+        Err(_) => (
+            StatusCode::NOT_FOUND,
+            [(header::CONTENT_TYPE, "text/plain".to_string())],
+            "not found",
+        ).into_response(),
+    }
+}
+
+// ── 备份 API ──
+
+pub async fn export_workspace(
+    State(state): State<Arc<AppState>>,
+    Path(ws_id): Path<String>,
+) -> Response {
+    let conn = state.db.lock().await;
+    match engine::backup::export_workspace(&conn, &ws_id, &state.config.storage_root) {
+        Ok(zip_data) => (
+            StatusCode::OK,
+            [
+                (header::CONTENT_TYPE, "application/zip".to_string()),
+                (
+                    header::CONTENT_DISPOSITION,
+                    "attachment; filename=\"workspace-backup.zip\"".to_string(),
+                ),
+            ],
+            zip_data,
+        ).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            [(header::CONTENT_TYPE, "text/plain".to_string())],
+            e.to_string(),
+        ).into_response(),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ImportBackupReq {
+    pub workspace_name: String,
+}
+
+pub async fn import_workspace(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ImportBackupReq>,
+    body: Bytes,
+) -> Json<Value> {
+    let conn = state.db.lock().await;
+    match engine::backup::import_workspace(
+        &conn,
+        &state.config.storage_root,
+        &body,
+        &params.workspace_name,
+    ) {
+        Ok(ws_id) => Json(json!({"ok": true, "workspace_id": ws_id})),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
 }

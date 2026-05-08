@@ -172,3 +172,12 @@
   font-family: inherit;
   outline: none;
 }
+
+/* ---- 拖拽排序 ---- */
+.tree-node-dragging {
+  opacity: 0.4;
+}
+
+.tree-node-drop-target {
+  border-top: 2px solid var(--ldb-color-brand-default);
+}

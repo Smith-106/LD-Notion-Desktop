@@ -1,7 +1,7 @@
 // LD-Notion Hub 后端服务入口
 
 use axum::{routing::{delete, get, post, put}, Router};
-use ld_notion_backend::{config, db, AppState, health_check, list_workspaces, create_workspace, delete_workspace, rename_workspace, workspace_stats, create_page, get_page, delete_page, get_page_content, update_page_content, get_page_tree, search_pages, rename_page, move_page, import_page, duplicate_page, update_tags, list_tags as list_workspace_tags, list_recent, list_pinned, toggle_pin, list_trash, restore_page, purge_page, empty_trash, reorder_pages, mcp};
+use ld_notion_backend::{config, db, AppState, health_check, list_workspaces, create_workspace, delete_workspace, rename_workspace, workspace_stats, create_page, get_page, delete_page, get_page_content, update_page_content, get_page_tree, search_pages, rename_page, move_page, import_page, duplicate_page, update_tags, list_tags as list_workspace_tags, list_recent, list_pinned, toggle_pin, list_trash, restore_page, purge_page, empty_trash, reorder_pages, upload_image, get_image, export_workspace, import_workspace, mcp};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -56,6 +56,10 @@ async fn main() {
         .route("/api/workspaces/{ws_id}/tree", get(get_page_tree))
         .route("/api/workspaces/{ws_id}/stats", get(workspace_stats))
         .route("/api/search", get(search_pages))
+        .route("/api/images/upload", post(upload_image))
+        .route("/api/images/{path}", get(get_image))
+        .route("/api/workspaces/{ws_id}/export", get(export_workspace))
+        .route("/api/workspaces/import", post(import_workspace))
         .nest("/mcp", mcp::transport::mcp_routes())
         .layer(cors)
         .with_state(state);

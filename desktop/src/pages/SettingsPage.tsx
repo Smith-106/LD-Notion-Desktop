@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import StatusIndicator from "../components/StatusIndicator";
 import { useAppStore } from "../store/appStore";
-import { listWorkspaces, deleteWorkspace, renameWorkspace, getWorkspaceStats } from "../services/api";
+import { listWorkspaces, deleteWorkspace, renameWorkspace, getWorkspaceStats, exportWorkspace, importWorkspace } from "../services/api";
 import "./SettingsPage.css";
 
 function SettingsPage() {
@@ -22,6 +22,41 @@ function SettingsPage() {
         }).catch(() => {});
       });
     }).catch(() => {});
+  }, [setWorkspaces]);
+
+  const handleExport = useCallback(async (wsId: string, name: string) => {
+    try {
+      const blob = await exportWorkspace(wsId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name}-backup.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`导出失败: ${err}`);
+    }
+  }, []);
+
+  const handleImport = useCallback(async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".zip";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const name = file.name.replace(/\.zip$/, "");
+      try {
+        const buf = await file.arrayBuffer();
+        await importWorkspace(name, buf);
+        const updated = await listWorkspaces();
+        setWorkspaces(updated);
+        alert("导入成功！");
+      } catch (err) {
+        alert(`导入失败: ${err}`);
+      }
+    };
+    input.click();
   }, [setWorkspaces]);
 
   const handleDelete = useCallback(async (id: string, name: string) => {
@@ -82,6 +117,12 @@ function SettingsPage() {
                     <div className="settings-workspace-actions">
                       <button
                         className="settings-btn"
+                        onClick={() => handleExport(ws.id, ws.name)}
+                      >
+                        导出
+                      </button>
+                      <button
+                        className="settings-btn"
                         onClick={() => handleRename(ws.id, ws.name)}
                       >
                         重命名
@@ -97,6 +138,11 @@ function SettingsPage() {
                 ))}
               </div>
             )}
+            <div style={{ marginTop: "12px" }}>
+              <button className="settings-btn" onClick={handleImport}>
+                导入工作区备份
+              </button>
+            </div>
           </div>
         </section>
 
@@ -145,7 +191,7 @@ function SettingsPage() {
               </div>
               <div className="settings-about-row">
                 <span className="settings-about-key">版本</span>
-                <span className="settings-about-value">v0.10.0</span>
+                <span className="settings-about-value">v0.12.0</span>
               </div>
               <div className="settings-about-row">
                 <span className="settings-about-key">技术栈</span>

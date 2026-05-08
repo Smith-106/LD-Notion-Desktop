@@ -6,6 +6,8 @@ pub mod page;
 pub mod page_tree;
 pub mod markdown_io;
 pub mod trash;
+pub mod image;
+pub mod backup;
 
 use serde::{Deserialize, Serialize};
 

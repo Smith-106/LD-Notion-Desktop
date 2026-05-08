@@ -8,11 +8,12 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
+import Image from "@tiptap/extension-image";
 import { common, createLowlight } from "lowlight";
 import { Markdown as tiptapMarkdown } from "tiptap-markdown";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useAppStore } from "../store/appStore";
-import { updatePageContent } from "../services/api";
+import { updatePageContent, uploadImage } from "../services/api";
 import TagBar from "./TagBar";
 import "./BlockEditor.css";
 
@@ -49,10 +50,33 @@ export default function BlockEditor() {
       TableRow,
       TableCell,
       TableHeader,
+      Image.configure({ inline: false, allowBase64: false }),
     ],
     editorProps: {
       attributes: {
         class: "block-editor-content",
+      },
+      handlePaste: (_view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+        for (const item of items) {
+          if (item.type.startsWith("image/")) {
+            const file = item.getAsFile();
+            if (!file) continue;
+            event.preventDefault();
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const buf = reader.result as ArrayBuffer;
+              try {
+                const path = await uploadImage(file.name || "paste.png", buf);
+                editor?.chain().focus().setImage({ src: `/api/images/${path}` }).run();
+              } catch {}
+            };
+            reader.readAsArrayBuffer(file);
+            return true;
+          }
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
@@ -181,6 +205,22 @@ export default function BlockEditor() {
     URL.revokeObjectURL(url);
   }, [editor, currentPage]);
 
+  const handleImageUpload = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const buf = await file.arrayBuffer();
+      try {
+        const path = await uploadImage(file.name, buf);
+        editor?.chain().focus().setImage({ src: `/api/images/${path}` }).run();
+      } catch {}
+    };
+    input.click();
+  }, [editor]);
+
   return (
     <div className="block-editor" onKeyDown={handleKeyDown}>
       <div className="block-editor-toolbar">
@@ -196,6 +236,12 @@ export default function BlockEditor() {
         <ToolbarButton editor={editor} action="toggleOrderedList" label="OL" />
         <ToolbarButton editor={editor} action="toggleCodeBlock" label="Code" />
         <div className="toolbar-separator" />
+        <button className="toolbar-btn" onClick={handleImageUpload} title="插入图片">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M4.5 6a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+            <path d="M1 3.5A2.5 2.5 0 013.5 1h9A2.5 2.5 0 0115 3.5v9a2.5 2.5 0 01-2.5 2.5h-9A2.5 2.5 0 011 12.5v-9zM3.5 2A1.5 1.5 0 002 3.5v6.293l2.646-2.647a.5.5 0 01.708 0L8 9.293l2.146-2.147a.5.5 0 01.708 0L14 10.293V3.5A1.5 1.5 0 0012.5 2h-9z" />
+          </svg>
+        </button>
         <button className="toolbar-btn" onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="插入表格">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M1 3h14v10H1V3zm1 1v3h5V4H2zm6 0v3h6V4H8zM2 8v4h5V8H2zm6 0v4h6V8H8z" />

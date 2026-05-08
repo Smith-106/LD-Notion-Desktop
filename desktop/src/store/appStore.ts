@@ -73,6 +73,12 @@ interface AppState {
   // 回收站
   trashItems: TrashItem[];
   setTrashItems: (items: TrashItem[]) => void;
+
+  // 拖拽排序
+  dragNodeId: string | null;
+  setDragNodeId: (id: string | null) => void;
+  dropTargetId: string | null;
+  setDropTargetId: (id: string | null) => void;
 }
 
 function loadTheme(): ThemeMode {
@@ -187,4 +193,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   trashItems: [],
   setTrashItems: (trashItems) => set({ trashItems }),
+
+  dragNodeId: null,
+  setDragNodeId: (dragNodeId) => set({ dragNodeId }),
+  dropTargetId: null,
+  setDropTargetId: (dropTargetId) => set({ dropTargetId }),
 }));
