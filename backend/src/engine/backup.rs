@@ -36,7 +36,7 @@ pub fn export_workspace(
         }
         let full_path = storage_root.join(&page.file_path);
         if let Ok(content) = std::fs::read_to_string(&full_path) {
-            zip.start_file(&format!("pages/{}.md", page.slug), options)?;
+            zip.start_file(format!("pages/{}.md", page.slug), options)?;
             zip.write_all(content.as_bytes())?;
         }
     }

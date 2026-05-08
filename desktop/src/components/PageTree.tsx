@@ -186,8 +186,7 @@ function TreeNode({ node, depth }: TreeNodeProps) {
       for (let i = 0; i < tree.length; i++) {
         if (tree[i].id === targetId) {
           const ids = tree.filter(n => n.id !== sourceId).map(n => n.id);
-          const targetIdx = ids.indexOf(targetId);
-          ids.splice(targetIdx, 0, sourceId);
+          ids.splice(ids.indexOf(targetId), 0, sourceId);
           return ids;
         }
         const result = collectSiblingIds(tree[i].children, targetId);

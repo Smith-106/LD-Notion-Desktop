@@ -8,13 +8,24 @@ pub fn save(
     filename: &str,
     data: &[u8],
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let uploads_dir = storage_root.join("uploads");
-    std::fs::create_dir_all(&uploads_dir)?;
+    const MAX_SIZE: usize = 10 * 1024 * 1024; // 10 MB
+    if data.len() > MAX_SIZE {
+        return Err("图片大小不能超过 10MB".into());
+    }
 
     let ext = Path::new(filename)
         .extension()
         .and_then(|e| e.to_str())
-        .unwrap_or("png");
+        .unwrap_or("png")
+        .to_lowercase();
+    let ext = match ext.as_str() {
+        "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" => ext,
+        _ => "png".to_string(),
+    };
+
+    let uploads_dir = storage_root.join("uploads");
+    std::fs::create_dir_all(&uploads_dir)?;
+
     let id = uuid::Uuid::new_v4();
     let saved_name = format!("{}.{}", id, ext);
     let full_path = uploads_dir.join(&saved_name);
